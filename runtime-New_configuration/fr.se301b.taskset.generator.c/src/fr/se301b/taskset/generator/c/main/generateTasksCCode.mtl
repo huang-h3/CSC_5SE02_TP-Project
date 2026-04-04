@@ -1,0 +1,187 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generateTasksCCode.
+ */]
+[module generateTasksCCode('http://www.example.org/tasksetmodel')]
+
+
+[**
+ * The documentation of the template generateTasksCCode.
+ * @param aTaskSet
+ */]
+[template public generateTasksCCode(aTaskSet : TaskSet)]
+[comment @main/]
+[file (aTaskSet.name + '.c', false, 'UTF-8')]
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#define __USE_UNIX98
+#include <pthread.h>
+#include <sched.h>
+#include <errno.h>
+
+#include "threads_dispatch.h"
+#include "threads_ports.h"
+
+unsigned int get_time_ns();
+void simulate_exec_time(unsigned int exec_time_ns);
+
+pthread_mutex_t start_barrier_mutex;
+pthread_cond_t start_barrier_cond;
+pthread_cond_t main_barrier_cond;
+
+char reached_barrier = 0;
+
+
+[comment]#define NB_THREADS 3[/comment]
+#define NB_THREADS [aTaskSet.task->size()/]
+
+[for (t : Task | aTaskSet.task)]
+void [t.name.normalize()/]_body();
+
+// Initialization of data for task [t.name/] ([t.threadKind/], period = [t.period/] ms)
+[if (t.threadKind = tasksetmodel::ThreadKind::periodic)]
+thread_config_t [t.name.normalize()/]_info = { [t.period/], 0 };
+[else]
+[for (p : Port | t.connectedInputPorts())]
+[let con : Connection = p.connections()->first()]
+char [t.name.normalize()/]_q_[p.name.normalize()/]_content['['/][con.maxQueueLen/][']'/] = { [listof('0', con.maxQueueLen)/] };
+port_queue_t [t.name.normalize()/]_q_[p.name.normalize()/] = { [con.maxQueueLen/], -1, -1, 0, sizeof(char), [t.name.normalize()/]_q_[p.name.normalize()/]_content };
+[/let]
+[/for]
+
+pthread_mutex_t [t.name.normalize()/]_q_rez;
+pthread_cond_t [t.name.normalize()/]_q_event;
+extern sporadic_thread_config_t [t.name.normalize()/]_info;
+thread_queue_t [t.name.normalize()/]_q = { &[t.name.normalize()/]_q_rez, &[t.name.normalize()/]_q_event, (union thread_config*) &[t.name.normalize()/]_info, 0, 0, 
+{ 
+ [for (p : Port | t.connectedInputPorts()) separator(',\n')]&[t.name.normalize()/]_q_[p.name.normalize()/][/for]
+} };
+
+struct timespec [t.name.normalize()/]_timespec;
+sporadic_thread_config_t [t.name.normalize()/]_info = { [t.period/], &[t.name.normalize()/]_timespec, &[t.name.normalize()/]_q, 0 };
+[/if]
+[/for]
+
+int main(int argc, char *argv['['/][']'/]) {
+	printf("Starting taskset program\n");
+	int errorCode;
+	int max_prio = sched_get_priority_max(SCHED_FIFO);
+	int min_prio = sched_get_priority_min(SCHED_FIFO);
+
+	pthread_t thId = pthread_self();
+	pthread_setschedprio(thId, min_prio); // we put the main thread at
+	// the min prio to make sure
+	// other threads start as soon
+	// as they are ready (no
+	// preemtion of T1, T2, and T3
+	// by the main thread).
+
+	pthread_mutex_init(&start_barrier_mutex, PTHREAD_MUTEX_NORMAL);
+	pthread_cond_init(&start_barrier_cond, NULL);
+	pthread_cond_init(&main_barrier_cond, NULL);
+
+	[for (t : Task | aTaskSet.task)]
+    [if (t.threadKind = tasksetmodel::ThreadKind::periodic)]
+    init_periodic_config(&[t.name.normalize()/]_info);
+    [else]
+    init_sporadic_config((thread_config_t*) &[t.name.normalize()/]_info);
+    [/if]
+    pthread_t [t.name.normalize()/]_tid;
+    create_fp_thread(min_prio + [aTaskSet.task->size() - i + 1/], 40960, (void*) [t.name.normalize()/]_body, &[t.name.normalize()/]_tid, SCHED_FIFO);
+    [/for]
+	printf("Before lock\n");
+
+	pthread_mutex_lock(&start_barrier_mutex);
+
+	printf("After mutex lock\n");
+	while (reached_barrier < NB_THREADS) {
+		printf("Inside while %d\n", reached_barrier);
+		pthread_cond_wait(&main_barrier_cond, &start_barrier_mutex);
+	}
+	pthread_mutex_unlock(&start_barrier_mutex);
+
+	printf("After barrier\n");
+
+	set_start_time();
+
+	pthread_cond_broadcast(&start_barrier_cond);
+
+	[for (t : Task | aTaskSet.task)]
+    pthread_join([t.name.normalize()/]_tid, NULL);
+    [/for]
+}
+
+[for (t : Task | aTaskSet.task)]
+void [t.name.normalize()/]_body() {
+    printf("Starting [t.name/]\n");
+    pthread_mutex_lock(&start_barrier_mutex);
+    reached_barrier++;
+    pthread_cond_signal(&main_barrier_cond);
+    pthread_cond_wait(&start_barrier_cond, &start_barrier_mutex);
+    pthread_mutex_unlock(&start_barrier_mutex);
+
+    while (1) {
+        [if (t.threadKind = tasksetmodel::ThreadKind::periodic)]
+        // Periodic
+        display_relative_date("Start thread [t.name/]", ([t.name.normalize()/]_info.periodic_config).iteration_counter);
+        
+        [t.behavior/] //Thread behavior
+
+
+        [for (p : Port | t.connectedOutputPorts())]
+        [for (con : Connection | p.connections())]
+        SendOutput_runtime(&[con.dstPort.eContainer(Task).name.normalize()/]_q, [con.dstPort.eContainer(Task).port->indexOf(con.dstPort)-1/], &PO);
+        [/for]
+        [/for]
+
+        printf("Finish thread [t.name/]\n");
+        await_periodic_dispatch(&[t.name.normalize()/]_info);
+
+        [else]
+        // Sporadic
+        StatusType status = await_sporadic_dispatch([t.name.normalize()/]_info.global_q);
+        ReceiveInputs_runtime([t.name.normalize()/]_info.global_q, 0);
+        
+        [for (p : Port | t.connectedInputPorts())]
+        char [p.name.normalize()/];
+        GetValue_runtime([t.name.normalize()/]_info.global_q, [i-1/], &[p.name.normalize()/]);
+        [/for]
+
+        [t.behavior/] //Thread behavior
+
+        printf("Finish thread [t.name/]\n");
+        [/if]
+    }
+}
+[/for]
+
+
+
+[/file]
+
+[/template]
+
+[query public normalize(name : String) : String =
+    self.replaceAll('-', '_')
+/]
+
+[query private connections (p : Port) : OrderedSet(Connection) = 
+    p.eContainer(TaskSet).connection->select(c | c.dstPort = p or c.sourcePort = p) 
+/]
+
+[query private isConnected (p : Port) : Boolean = 
+    not p.connections()->isEmpty() 
+/]
+
+[query private connectedInputPorts (t : Task) : OrderedSet(Port) = 
+    t.port->select(p | p.direction = tasksetmodel::PortDirection::_in)->select(p | p.isConnected()) 
+/]
+
+[query private listof(token: String, nbToken : Integer) : String =
+    if nbToken <= 1 then token else token + ', ' + self.listof(token, nbToken - 1) endif
+/]
+
+[query private connectedOutputPorts (t : Task) : OrderedSet(Port) = 
+    t.port->select(p | p.direction = tasksetmodel::PortDirection::out)->select(p | p.isConnected()) 
+/]

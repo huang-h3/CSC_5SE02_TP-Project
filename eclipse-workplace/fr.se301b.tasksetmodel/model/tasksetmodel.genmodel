@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" modelDirectory="/fr.se301b.tasksetmodel/src" modelPluginID="fr.se301b.tasksetmodel"
+    modelName="Tasksetmodel" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="21.0" copyrightFields="false"
+    operationReflection="true" importOrganizing="true">
+  <foreignModel>tasksetmodel.ecore</foreignModel>
+  <genPackages prefix="Tasksetmodel" disposableProviderFactory="true" ecorePackage="tasksetmodel.ecore#/">
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="tasksetmodel.ecore#//Datatype">
+      <genEnumLiterals ecoreEnumLiteral="tasksetmodel.ecore#//Datatype/int"/>
+      <genEnumLiterals ecoreEnumLiteral="tasksetmodel.ecore#//Datatype/float"/>
+      <genEnumLiterals ecoreEnumLiteral="tasksetmodel.ecore#//Datatype/character"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="tasksetmodel.ecore#//ThreadKind">
+      <genEnumLiterals ecoreEnumLiteral="tasksetmodel.ecore#//ThreadKind/sporadic"/>
+      <genEnumLiterals ecoreEnumLiteral="tasksetmodel.ecore#//ThreadKind/periodic"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="tasksetmodel.ecore#//PortDirection">
+      <genEnumLiterals ecoreEnumLiteral="tasksetmodel.ecore#//PortDirection/in"/>
+      <genEnumLiterals ecoreEnumLiteral="tasksetmodel.ecore#//PortDirection/out"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="tasksetmodel.ecore#//SchedulingPolicy">
+      <genEnumLiterals ecoreEnumLiteral="tasksetmodel.ecore#//SchedulingPolicy/RMS"/>
+    </genEnums>
+    <genClasses ecoreClass="tasksetmodel.ecore#//TaskSet">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tasksetmodel.ecore#//TaskSet/schedulingPolicy"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference tasksetmodel.ecore#//TaskSet/task"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference tasksetmodel.ecore#//TaskSet/connection"/>
+    </genClasses>
+    <genClasses ecoreClass="tasksetmodel.ecore#//Task">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tasksetmodel.ecore#//Task/threadKind"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tasksetmodel.ecore#//Task/period"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference tasksetmodel.ecore#//Task/port"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tasksetmodel.ecore#//Task/behavior"/>
+    </genClasses>
+    <genClasses ecoreClass="tasksetmodel.ecore#//Connection">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tasksetmodel.ecore#//Connection/maxQueueLen"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference tasksetmodel.ecore#//Connection/dstPort"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference tasksetmodel.ecore#//Connection/sourcePort"/>
+    </genClasses>
+    <genClasses ecoreClass="tasksetmodel.ecore#//Port">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tasksetmodel.ecore#//Port/direction"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tasksetmodel.ecore#//Port/datatype"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="tasksetmodel.ecore#//NamedElement">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tasksetmodel.ecore#//NamedElement/name"/>
+      <genFeatures property="Readonly" createChild="false" ecoreFeature="ecore:EAttribute tasksetmodel.ecore#//NamedElement/qualifiedName"/>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>

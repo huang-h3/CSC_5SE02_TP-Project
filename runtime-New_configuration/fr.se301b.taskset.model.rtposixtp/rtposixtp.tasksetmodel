@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tasksetmodel:TaskSet xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:tasksetmodel="http://www.example.org/tasksetmodel" name="main">
+  <task name="T1" threadKind="periodic" period="1000" behavior="char PO = 'c';">
+    <port name="po" direction="out" datatype="character"/>
+  </task>
+  <task name="T2" threadKind="periodic" period="2000" behavior="printf(&quot;T2 processing...\n&quot;);"/>
+  <task name="T3" period="6000" behavior="printf(&quot;T3 processing...\n&quot;);">
+    <port name="pi" datatype="character"/>
+  </task>
+  <task name="T4" period="6000" behavior="printf(&quot;T4 processing...\n&quot;);">
+    <port name="pi" datatype="character"/>
+  </task>
+  <connection name="C1" maxQueueLen="5" dstPort="T3.pi" sourcePort="T1.po"/>
+  <connection name="C2" maxQueueLen="3" dstPort="T4.pi" sourcePort="T1.po"/>
+</tasksetmodel:TaskSet>

@@ -1,0 +1,15 @@
+# Ignore Eclipse project files
+.metadata/
+
+# Ignore build output directories
+**/bin/
+*.class
+*.o
+*.exe
+*.out
+
+# Ignore system-generated files
+.DS_Store
+Thumbs.db
+
+runtime-EclipseApplication/
