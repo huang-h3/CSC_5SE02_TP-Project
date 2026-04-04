@@ -63,8 +63,6 @@ struct timespec T4_timespec;
 sporadic_thread_config_t T4_info = { 6000, &T4_timespec, &T4_q, 0 };
 
 int main(int argc, char *argv[]) {
-	printf("Starting taskset program\n");
-	int errorCode;
 	int max_prio = sched_get_priority_max(SCHED_FIFO);
 	int min_prio = sched_get_priority_min(SCHED_FIFO);
 
@@ -76,34 +74,30 @@ int main(int argc, char *argv[]) {
 	// preemtion of T1, T2, and T3
 	// by the main thread).
 
-	pthread_mutex_init(&start_barrier_mutex, PTHREAD_MUTEX_NORMAL);
+	pthread_mutex_init(&start_barrier_mutex, NULL);
 	pthread_cond_init(&start_barrier_cond, NULL);
 	pthread_cond_init(&main_barrier_cond, NULL);
 
     init_periodic_config(&T1_info);
     pthread_t T1_tid;
-    create_fp_thread(min_prio + 4, 40960, (void*) T1_body, &T1_tid, SCHED_FIFO);
+    create_fp_thread(min_prio + 3, 40960, (void*) T1_body, &T1_tid, SCHED_FIFO);
     init_periodic_config(&T2_info);
     pthread_t T2_tid;
-    create_fp_thread(min_prio + 3, 40960, (void*) T2_body, &T2_tid, SCHED_FIFO);
+    create_fp_thread(min_prio + 2, 40960, (void*) T2_body, &T2_tid, SCHED_FIFO);
     init_sporadic_config((thread_config_t*) &T3_info);
     pthread_t T3_tid;
-    create_fp_thread(min_prio + 2, 40960, (void*) T3_body, &T3_tid, SCHED_FIFO);
+    create_fp_thread(min_prio + 1, 40960, (void*) T3_body, &T3_tid, SCHED_FIFO);
     init_sporadic_config((thread_config_t*) &T4_info);
     pthread_t T4_tid;
     create_fp_thread(min_prio + 1, 40960, (void*) T4_body, &T4_tid, SCHED_FIFO);
-	printf("Before lock\n");
 
 	pthread_mutex_lock(&start_barrier_mutex);
 
-	printf("After mutex lock\n");
 	while (reached_barrier < NB_THREADS) {
-		printf("Inside while %d\n", reached_barrier);
 		pthread_cond_wait(&main_barrier_cond, &start_barrier_mutex);
 	}
 	pthread_mutex_unlock(&start_barrier_mutex);
 
-	printf("After barrier\n");
 
 	set_start_time();
 
@@ -116,7 +110,6 @@ int main(int argc, char *argv[]) {
 }
 
 void T1_body() {
-    printf("Starting T1\n");
     pthread_mutex_lock(&start_barrier_mutex);
     reached_barrier++;
     pthread_cond_signal(&main_barrier_cond);
@@ -127,19 +120,18 @@ void T1_body() {
         // Periodic
         display_relative_date("Start thread T1", (T1_info.periodic_config).iteration_counter);
         
-        char PO = 'c'; //Thread behavior
+        char PO = 'c'; simulate_exec_time(400000000); // 400 ms //Thread behavior
 
+        printf("Finish thread T1\n");
 
         SendOutput_runtime(&T3_q, 0, &PO);
         SendOutput_runtime(&T4_q, 0, &PO);
 
-        printf("Finish thread T1\n");
         await_periodic_dispatch(&T1_info);
 
     }
 }
 void T2_body() {
-    printf("Starting T2\n");
     pthread_mutex_lock(&start_barrier_mutex);
     reached_barrier++;
     pthread_cond_signal(&main_barrier_cond);
@@ -150,17 +142,16 @@ void T2_body() {
         // Periodic
         display_relative_date("Start thread T2", (T2_info.periodic_config).iteration_counter);
         
-        printf("T2 processing...\n"); //Thread behavior
-
-
+        printf("T2 processing...\n"); simulate_exec_time(800000000); // 800 ms; //Thread behavior
 
         printf("Finish thread T2\n");
+
+
         await_periodic_dispatch(&T2_info);
 
     }
 }
 void T3_body() {
-    printf("Starting T3\n");
     pthread_mutex_lock(&start_barrier_mutex);
     reached_barrier++;
     pthread_cond_signal(&main_barrier_cond);
@@ -175,13 +166,12 @@ void T3_body() {
         char pi;
         GetValue_runtime(T3_info.global_q, 0, &pi);
 
-        printf("T3 processing...\n"); //Thread behavior
+        char c; GetValue_runtime(T3_info.global_q, 0, &c); printf("T3, received data: %d\n", c); simulate_exec_time(2000000000); // 200 ms; //Thread behavior
 
         printf("Finish thread T3\n");
     }
 }
 void T4_body() {
-    printf("Starting T4\n");
     pthread_mutex_lock(&start_barrier_mutex);
     reached_barrier++;
     pthread_cond_signal(&main_barrier_cond);
@@ -196,7 +186,7 @@ void T4_body() {
         char pi;
         GetValue_runtime(T4_info.global_q, 0, &pi);
 
-        printf("T4 processing...\n"); //Thread behavior
+        printf("T4 processing...\n"); simulate_exec_time(2000000000); // 200 ms //Thread behavior
 
         printf("Finish thread T4\n");
     }

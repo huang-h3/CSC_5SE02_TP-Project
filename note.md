@@ -467,18 +467,28 @@ Define a query to obtain connected output ports. Add this query at the bottom of
     t.port->select(p | p.direction = tasksetmodel::PortDirection::out)->select(p | p.isConnected()) 
 /]
 ```
+
+Add a query to automatically calculate the RMS priority: Count the number of unique periods in the system that are greater than the current task's period, then add 1.
+```C
+[query private getRmsPriority (t : Task, ts : TaskSet) : Integer = 
+    ts.task.period->asSet()->select(p | p > t.period)->size() + 1 
+/]
+```
+char PO = 'c';
+simulate_exec_time(400000000); // 400 ms
+
 Creations and joins are completed in `main()`:
 
 - Thread creations
     ```C
-    [for (t : Task | aTaskSet.task)]
+	[for (t : Task | aTaskSet.task)]
     [if (t.threadKind = tasksetmodel::ThreadKind::periodic)]
     init_periodic_config(&[t.name.normalize()/]_info);
     [else]
     init_sporadic_config((thread_config_t*) &[t.name.normalize()/]_info);
     [/if]
     pthread_t [t.name.normalize()/]_tid;
-    create_fp_thread(min_prio + [aTaskSet.task->size() - i + 1/], 40960, (void*) [t.name.normalize()/]_body, &[t.name.normalize()/]_tid, SCHED_FIFO);
+    create_fp_thread(min_prio + [t.getRmsPriority(aTaskSet)/], 40960, (void*) [t.name.normalize()/]_body, &[t.name.normalize()/]_tid, SCHED_FIFO);
     [/for]
     ```
 

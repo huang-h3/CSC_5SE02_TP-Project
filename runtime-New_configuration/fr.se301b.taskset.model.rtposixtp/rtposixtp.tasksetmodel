@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tasksetmodel:TaskSet xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:tasksetmodel="http://www.example.org/tasksetmodel" name="main">
-  <task name="T1" threadKind="periodic" period="1000" behavior="char PO = 'c';">
+  <task name="T1" threadKind="periodic" period="1000" behavior="char PO = 'c'; simulate_exec_time(400000000); // 400 ms">
     <port name="po" direction="out" datatype="character"/>
   </task>
-  <task name="T2" threadKind="periodic" period="2000" behavior="printf(&quot;T2 processing...\n&quot;);"/>
-  <task name="T3" period="6000" behavior="printf(&quot;T3 processing...\n&quot;);">
+  <task name="T2" threadKind="periodic" period="2000" behavior="printf(&quot;T2 processing...\n&quot;); simulate_exec_time(800000000); // 800 ms;"/>
+  <task name="T3" period="6000" behavior="char c; GetValue_runtime(T3_info.global_q, 0, &amp;c); printf(&quot;T3, received data: %d\n&quot;, c); simulate_exec_time(2000000000); // 200 ms;">
     <port name="pi" datatype="character"/>
   </task>
-  <task name="T4" period="6000" behavior="printf(&quot;T4 processing...\n&quot;);">
+  <task name="T4" period="6000" behavior="printf(&quot;T4 processing...\n&quot;); simulate_exec_time(2000000000); // 200 ms">
     <port name="pi" datatype="character"/>
   </task>
   <connection name="C1" maxQueueLen="5" dstPort="T3.pi" sourcePort="T1.po"/>
