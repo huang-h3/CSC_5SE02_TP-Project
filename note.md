@@ -460,7 +460,9 @@ The generated `main.c`:
   <img src="images/3.6.4_generated_mainc.png" width="90%">
 </div>
 
-### 3.6.5 Thread Creations, Joins and Function Bodies
+### 3.6.5 & 3.6.6
+We recall that the original `main.c` is renamed as `main_4THREADS.c` in section 3.3.2, in which there are 4 tasks instead of 3. The target of this section is to generate a `main.c` that imitates the behavior of `main_4THREADS.c`.
+
 Define a query to obtain connected output ports. Add this query at the bottom of `mtl` file, similar to the given query `connectedInputPorts` in the tutorial:
 ```C
 [query private connectedOutputPorts (t : Task) : OrderedSet(Port) = 
@@ -474,8 +476,30 @@ Add a query to automatically calculate the RMS priority: Count the number of uni
     ts.task.period->asSet()->select(p | p > t.period)->size() + 1 
 /]
 ```
-char PO = 'c';
-simulate_exec_time(400000000); // 400 ms
+
+The defined ecore model, `tasksetmodel`, is constructed as follows(we will not go into all the details about the configuration here):
+<div align="center">
+  <img src="images/3.6.6_runtime_tasksetmodel.png" width="90%">
+</div>
+
+The `behavior` of each Task:
+- Task T1
+    ```C
+    char PO = 'c'; simulate_exec_time(400000000); // 400 ms
+    ```
+- Task T2
+    ```C
+    printf("T2 processing...\n"); simulate_exec_time(800000000); // 800 ms;
+    ```
+- Task T3
+    ```C
+    char c; GetValue_runtime(T3_info.global_q, 0, &c); printf("T3, received data: %d\n", c); simulate_exec_time(2000000000); // 200 ms;
+    ```
+- Task T4
+    ```C
+    printf("T4 processing...\n"); simulate_exec_time(2000000000); // 200 ms
+    ```
+
 
 Creations and joins are completed in `main()`:
 
@@ -546,6 +570,76 @@ void [t.name.normalize()/]_body() {
 [/for]
 ```
 
+
+Use the `mtl` file described above to generate the target code `main.c`. The output of generated `main.c`:
+
+```
+Creating thread
+Creating thread
+Creating thread
+Creating thread
+Start thread T2 - date: 0 sec: 15607 nsec - iteration 0
+T2 processing...
+Start thread T1 - date: 0 sec: 28308 nsec - iteration 0
+Finish thread T1
+Write in index 1, 99 
+Write in index 1, 99 
+Receive inputs: number of discarded messages is 0
+Receive inputs: first: 0, last: 1
+T4 processing...
+Receive inputs: number of discarded messages is 0
+Receive inputs: first: 0, last: 1
+T3, received data: 0
+Finish thread T2
+Start thread T1 - date: 1 sec: 44284 nsec - iteration 1
+Finish thread T1
+Write in index 2, 99 
+Write in index 2, 99 
+Start thread T2 - date: 2 sec: 29868 nsec - iteration 1
+T2 processing...
+Start thread T1 - date: 2 sec: 45797 nsec - iteration 2
+Finish thread T1
+Write in index 3, 99 
+Send output: ERROR, full queue
+Finish thread T4
+Finish thread T3
+Finish thread T2
+Start thread T1 - date: 3 sec: 42841 nsec - iteration 3
+Finish thread T1
+Write in index 4, 99 
+Send output: ERROR, full queue
+Start thread T1 - date: 4 sec: 38018 nsec - iteration 4
+Start thread T2 - date: 4 sec: 38114 nsec - iteration 2
+T2 processing...
+Finish thread T1
+Send output: ERROR, full queue
+Send output: ERROR, full queue
+Finish thread T2
+Start thread T1 - date: 5 sec: 38359 nsec - iteration 5
+Finish thread T1
+Send output: ERROR, full queue
+Send output: ERROR, full queue
+Start thread T1 - date: 6 sec: 41062 nsec - iteration 6
+Start thread T2 - date: 6 sec: 43410 nsec - iteration 3
+T2 processing...
+Finish thread T1
+Send output: ERROR, full queue
+Send output: ERROR, full queue
+Receive inputs: number of discarded messages is 1
+Receive inputs: first: 2, last: 2
+T4 processing...
+Receive inputs: number of discarded messages is 1
+Receive inputs: first: 2, last: 4
+T3, received data: 99
+Finish thread T2
+Start thread T1 - date: 7 sec: 36937 nsec - iteration 7
+Finish thread T1
+Write in index 0, 99 
+Write in index 0, 99 
+...
+```
+
+
 The output of `main_4THREADS.c`:
 ```Text
 Creating thread
@@ -613,71 +707,5 @@ Write in index 0, 99
 ...
 ```
 
-The output of generated `main.c`:
-```
-Creating thread
-Creating thread
-Creating thread
-Creating thread
-Start thread T2 - date: 0 sec: 15607 nsec - iteration 0
-T2 processing...
-Start thread T1 - date: 0 sec: 28308 nsec - iteration 0
-Finish thread T1
-Write in index 1, 99 
-Write in index 1, 99 
-Receive inputs: number of discarded messages is 0
-Receive inputs: first: 0, last: 1
-T4 processing...
-Receive inputs: number of discarded messages is 0
-Receive inputs: first: 0, last: 1
-T3, received data: 0
-Finish thread T2
-Start thread T1 - date: 1 sec: 44284 nsec - iteration 1
-Finish thread T1
-Write in index 2, 99 
-Write in index 2, 99 
-Start thread T2 - date: 2 sec: 29868 nsec - iteration 1
-T2 processing...
-Start thread T1 - date: 2 sec: 45797 nsec - iteration 2
-Finish thread T1
-Write in index 3, 99 
-Send output: ERROR, full queue
-Finish thread T4
-Finish thread T3
-Finish thread T2
-Start thread T1 - date: 3 sec: 42841 nsec - iteration 3
-Finish thread T1
-Write in index 4, 99 
-Send output: ERROR, full queue
-Start thread T1 - date: 4 sec: 38018 nsec - iteration 4
-Start thread T2 - date: 4 sec: 38114 nsec - iteration 2
-T2 processing...
-Finish thread T1
-Send output: ERROR, full queue
-Send output: ERROR, full queue
-Finish thread T2
-Start thread T1 - date: 5 sec: 38359 nsec - iteration 5
-Finish thread T1
-Send output: ERROR, full queue
-Send output: ERROR, full queue
-Start thread T1 - date: 6 sec: 41062 nsec - iteration 6
-Start thread T2 - date: 6 sec: 43410 nsec - iteration 3
-T2 processing...
-Finish thread T1
-Send output: ERROR, full queue
-Send output: ERROR, full queue
-Receive inputs: number of discarded messages is 1
-Receive inputs: first: 2, last: 2
-T4 processing...
-Receive inputs: number of discarded messages is 1
-Receive inputs: first: 2, last: 4
-T3, received data: 99
-Finish thread T2
-Start thread T1 - date: 7 sec: 36937 nsec - iteration 7
-Finish thread T1
-Write in index 0, 99 
-Write in index 0, 99 
-...
-```
 
 The two output logs are similar, showing that the code generation is successful.
