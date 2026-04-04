@@ -545,3 +545,139 @@ void [t.name.normalize()/]_body() {
 }
 [/for]
 ```
+
+The output of `main_4THREADS.c`:
+```Text
+Creating thread
+Creating thread
+Creating thread
+Creating thread
+Start thread T2 - date: 0 sec: 15607 nsec - iteration 0
+T2 processing...
+Start thread T1 - date: 0 sec: 28308 nsec - iteration 0
+Finish thread T1
+Write in index 1, 99 
+Write in index 1, 99 
+Receive inputs: number of discarded messages is 0
+Receive inputs: first: 0, last: 1
+T4 processing...
+Receive inputs: number of discarded messages is 0
+Receive inputs: first: 0, last: 1
+T3, received data: 0
+Finish thread T2
+Start thread T1 - date: 1 sec: 44284 nsec - iteration 1
+Finish thread T1
+Write in index 2, 99 
+Write in index 2, 99 
+Start thread T2 - date: 2 sec: 29868 nsec - iteration 1
+T2 processing...
+Start thread T1 - date: 2 sec: 45797 nsec - iteration 2
+Finish thread T1
+Write in index 3, 99 
+Send output: ERROR, full queue
+Finish thread T4
+Finish thread T3
+Finish thread T2
+Start thread T1 - date: 3 sec: 42841 nsec - iteration 3
+Finish thread T1
+Write in index 4, 99 
+Send output: ERROR, full queue
+Start thread T1 - date: 4 sec: 38018 nsec - iteration 4
+Start thread T2 - date: 4 sec: 38114 nsec - iteration 2
+T2 processing...
+Finish thread T1
+Send output: ERROR, full queue
+Send output: ERROR, full queue
+Finish thread T2
+Start thread T1 - date: 5 sec: 38359 nsec - iteration 5
+Finish thread T1
+Send output: ERROR, full queue
+Send output: ERROR, full queue
+Start thread T1 - date: 6 sec: 41062 nsec - iteration 6
+Start thread T2 - date: 6 sec: 43410 nsec - iteration 3
+T2 processing...
+Finish thread T1
+Send output: ERROR, full queue
+Send output: ERROR, full queue
+Receive inputs: number of discarded messages is 1
+Receive inputs: first: 2, last: 2
+T4 processing...
+Receive inputs: number of discarded messages is 1
+Receive inputs: first: 2, last: 4
+T3, received data: 99
+Finish thread T2
+Start thread T1 - date: 7 sec: 36937 nsec - iteration 7
+Finish thread T1
+Write in index 0, 99 
+Write in index 0, 99
+...
+```
+
+The output of generated `main.c`:
+```
+Creating thread
+Creating thread
+Creating thread
+Creating thread
+Start thread T2 - date: 0 sec: 15607 nsec - iteration 0
+T2 processing...
+Start thread T1 - date: 0 sec: 28308 nsec - iteration 0
+Finish thread T1
+Write in index 1, 99 
+Write in index 1, 99 
+Receive inputs: number of discarded messages is 0
+Receive inputs: first: 0, last: 1
+T4 processing...
+Receive inputs: number of discarded messages is 0
+Receive inputs: first: 0, last: 1
+T3, received data: 0
+Finish thread T2
+Start thread T1 - date: 1 sec: 44284 nsec - iteration 1
+Finish thread T1
+Write in index 2, 99 
+Write in index 2, 99 
+Start thread T2 - date: 2 sec: 29868 nsec - iteration 1
+T2 processing...
+Start thread T1 - date: 2 sec: 45797 nsec - iteration 2
+Finish thread T1
+Write in index 3, 99 
+Send output: ERROR, full queue
+Finish thread T4
+Finish thread T3
+Finish thread T2
+Start thread T1 - date: 3 sec: 42841 nsec - iteration 3
+Finish thread T1
+Write in index 4, 99 
+Send output: ERROR, full queue
+Start thread T1 - date: 4 sec: 38018 nsec - iteration 4
+Start thread T2 - date: 4 sec: 38114 nsec - iteration 2
+T2 processing...
+Finish thread T1
+Send output: ERROR, full queue
+Send output: ERROR, full queue
+Finish thread T2
+Start thread T1 - date: 5 sec: 38359 nsec - iteration 5
+Finish thread T1
+Send output: ERROR, full queue
+Send output: ERROR, full queue
+Start thread T1 - date: 6 sec: 41062 nsec - iteration 6
+Start thread T2 - date: 6 sec: 43410 nsec - iteration 3
+T2 processing...
+Finish thread T1
+Send output: ERROR, full queue
+Send output: ERROR, full queue
+Receive inputs: number of discarded messages is 1
+Receive inputs: first: 2, last: 2
+T4 processing...
+Receive inputs: number of discarded messages is 1
+Receive inputs: first: 2, last: 4
+T3, received data: 99
+Finish thread T2
+Start thread T1 - date: 7 sec: 36937 nsec - iteration 7
+Finish thread T1
+Write in index 0, 99 
+Write in index 0, 99 
+...
+```
+
+The two output logs are similar, showing that the code generation is successful.
