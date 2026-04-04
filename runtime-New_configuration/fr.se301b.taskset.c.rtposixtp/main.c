@@ -32,8 +32,8 @@ thread_config_t T2_info = { 2000, 0 };
 void T3_body();
 
 // Initialization of data for task T3 (sporadic, period = 6000 ms)
-char T3_q_pi_content[5] = { 0, 0, 0, 0, 0 };
-port_queue_t T3_q_pi = { 5, -1, -1, 0, sizeof(char), T3_q_pi_content };
+char T3_q_pi_content[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+port_queue_t T3_q_pi = { 16, -1, -1, 0, sizeof(char), T3_q_pi_content };
 
 pthread_mutex_t T3_q_rez;
 pthread_cond_t T3_q_event;
@@ -48,8 +48,8 @@ sporadic_thread_config_t T3_info = { 6000, &T3_timespec, &T3_q, 0 };
 void T4_body();
 
 // Initialization of data for task T4 (sporadic, period = 6000 ms)
-char T4_q_pi_content[3] = { 0, 0, 0 };
-port_queue_t T4_q_pi = { 3, -1, -1, 0, sizeof(char), T4_q_pi_content };
+char T4_q_pi_content[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+port_queue_t T4_q_pi = { 16, -1, -1, 0, sizeof(char), T4_q_pi_content };
 
 pthread_mutex_t T4_q_rez;
 pthread_cond_t T4_q_event;
@@ -186,7 +186,7 @@ void T4_body() {
         char pi;
         GetValue_runtime(T4_info.global_q, 0, &pi);
 
-        printf("T4 processing...\n"); simulate_exec_time(2000000000); // 200 ms //Thread behavior
+        printf("T4 processing...\n"); simulate_exec_time(2000000000); // 2000 ms //Thread behavior
 
         printf("Finish thread T4\n");
     }

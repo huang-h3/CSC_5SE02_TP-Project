@@ -7,9 +7,9 @@
   <task name="T3" period="6000" behavior="char c; GetValue_runtime(T3_info.global_q, 0, &amp;c); printf(&quot;T3, received data: %d\n&quot;, c); simulate_exec_time(2000000000); // 200 ms;">
     <port name="pi" datatype="character"/>
   </task>
-  <task name="T4" period="6000" behavior="printf(&quot;T4 processing...\n&quot;); simulate_exec_time(2000000000); // 200 ms">
+  <task name="T4" period="6000" behavior="printf(&quot;T4 processing...\n&quot;); simulate_exec_time(2000000000); // 2000 ms">
     <port name="pi" datatype="character"/>
   </task>
-  <connection name="C1" maxQueueLen="5" dstPort="T3.pi" sourcePort="T1.po"/>
-  <connection name="C2" maxQueueLen="3" dstPort="T4.pi" sourcePort="T1.po"/>
+  <connection name="C1" maxQueueLen="16" dstPort="T3.pi" sourcePort="T1.po"/>
+  <connection name="C2" maxQueueLen="16" dstPort="T4.pi" sourcePort="T1.po"/>
 </tasksetmodel:TaskSet>

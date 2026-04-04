@@ -137,38 +137,55 @@ Adding annotations.
      * @generated NOT
      */
     public boolean validateConnection_ValidQueueSize(Connection connection, DiagnosticChain diagnostics, Map<Object, Object> context) {
-        if (connection.getSourcePort() != null && connection.getDstPort() != null) {
-            
-            // Find the corresponding Task with eContainer()
-            Task srcTask = (Task) connection.getSourcePort().eContainer();
-            Task dstTask = (Task) connection.getDstPort().eContainer();
-            
-            if (srcTask != null && dstTask != null) {
-                int srcPeriod = srcTask.getPeriod();
-                int dstPeriod = dstTask.getPeriod();
-
-                int maxQueueLen = connection.getMaxQueueLen();
-                
-                if (srcPeriod > 0) {
-                    // dst.period/src.period
-                    int requiredLen = (int) Math.ceil((double) dstPeriod / srcPeriod);
-
-                    if (maxQueueLen < requiredLen) {
-                        if (diagnostics != null) {
-                            diagnostics.add(new BasicDiagnostic(
-                                Diagnostic.ERROR, DIAGNOSTIC_SOURCE, 0,
-                                "Connection error: 'maxQueueLen' (" + maxQueueLen + ") is too small. " +
-                                "Task '" + srcTask.getName() + "' (period:" + srcPeriod + ") produces data faster than " +
-                                "Task '" + dstTask.getName() + "' (period:" + dstPeriod + ") can consume. " +
-                                "Minimum required queue length is " + requiredLen + ".",
-                                new Object[] { connection }
-                            ));
-                        }
-                        return false;
-                    }
-                }
-            }
+        if (connection == null || connection.getSourcePort() == null || connection.getDstPort() == null) {
+            return true;
         }
+
+        if (!(connection.getSourcePort().eContainer() instanceof Task) ||
+            !(connection.getDstPort().eContainer() instanceof Task)) {
+            return true;
+        }
+
+        Task srcTask = (Task) connection.getSourcePort().eContainer();
+        Task dstTask = (Task) connection.getDstPort().eContainer();
+
+        int srcPeriod = srcTask.getPeriod();
+        int dstPeriod = dstTask.getPeriod();
+        int queueSize = connection.getMaxQueueLen();
+
+        if (srcPeriod <= 0 || dstPeriod <= 0) {
+            if (diagnostics != null) {
+                diagnostics.add(new BasicDiagnostic(
+                    Diagnostic.ERROR, DIAGNOSTIC_SOURCE, 0,
+                    "Connection '" + connection.getName() + "': periods must be > 0 " +
+                    "(src=" + srcPeriod + ", dst=" + dstPeriod + ").",
+                    new Object[] { connection }
+                ));
+            }
+            return false;
+        }
+
+        // Number of messages that can arrive during one destination activation interval
+        int requiredMsgs = (int) Math.ceil((double) dstPeriod / (double) srcPeriod);
+
+        // Runtime ring-buffer keeps one slot empty to distinguish full from empty:
+        // usable capacity = queue_size - 1
+        int requiredQueueSize = requiredMsgs + 1;
+
+        if (queueSize < requiredQueueSize) {
+            if (diagnostics != null) {
+                diagnostics.add(new BasicDiagnostic(
+                    Diagnostic.ERROR, DIAGNOSTIC_SOURCE, 0,
+                    "Connection '" + connection.getName() + "': maxQueueLen (" + queueSize + ") is too small. " +
+                    "For src period " + srcPeriod + " ms and dst period " + dstPeriod + " ms, " +
+                    "minimum queue_size is " + requiredQueueSize +
+                    " (stores " + requiredMsgs + " messages because one slot is reserved by runtime ring buffer).",
+                    new Object[] { connection }
+                ));
+            }
+            return false;
+        }
+
         return true;
     }
     ```
@@ -482,7 +499,7 @@ The defined ecore model, `tasksetmodel`, is constructed as follows(we will not g
   <img src="images/3.6.6_runtime_tasksetmodel.png" width="90%">
 </div>
 
-The `behavior` of each Task:
+The `behavior` of each Task(note that in main_4THREADS.c, the execution time of Task T4 is not 200 ms as commented but 2000 ms, here we use 2000 ms):
 - Task T1
     ```C
     char PO = 'c'; simulate_exec_time(400000000); // 400 ms
@@ -497,7 +514,7 @@ The `behavior` of each Task:
     ```
 - Task T4
     ```C
-    printf("T4 processing...\n"); simulate_exec_time(2000000000); // 200 ms
+    printf("T4 processing...\n"); simulate_exec_time(200000000); // 2000 ms
     ```
 
 
@@ -709,3 +726,108 @@ Write in index 0, 99
 
 
 The two output logs are similar, showing that the code generation is successful.
+
+### Comments on the runtime C code used in the project
+
+1.  From the output logs we see many `full queue` errors, this is because the original `maxQueueSize` of Connections `C1`(T1.po->T3.pi) and `C2`(T1.po->T4.pi) are wrong. They are too small (5 for `C1` and 3 for `C2`). T1, a periodic task, produces every 1000 ms, while sporadic tasks T3 and T4 consume with a minimum interval of 6000 ms. If the maximum queue length is smaller than  ceil(dstPeriod/srcPeriod)+1=7, which is 5 now, then the queue reaches saturation quickly and `SendOutput_runtime` reports full queue repeatedly, causing message loss and reducing the reliability of the scheduling simulation.
+
+    This log is the output after changing `maxQueueSize` of Connections `C1` and `C2` to 16. We see that `full queue` errors are reduced significantly.
+
+    ```Text
+    Creating thread
+    Creating thread
+    Creating thread
+    Creating thread
+    Start thread T1 - date: 0 sec: 33375 nsec - iteration 0
+    Start thread T2 - date: 0 sec: 41157 nsec - iteration 0
+    T2 processing...
+    Finish thread T1
+    Write in index 1, 99 
+    Write in index 1, 99 
+    Receive inputs: number of discarded messages is 0
+    Receive inputs: first: 0, last: 1
+    T3, received data: 0
+    Receive inputs: number of discarded messages is 0
+    Receive inputs: first: 0, last: 1
+    T4 processing...
+    Finish thread T2
+    Start thread T1 - date: 1 sec: 44350 nsec - iteration 1
+    Finish thread T1
+    Write in index 2, 99 
+    Write in index 2, 99 
+    Start thread T1 - date: 2 sec: 43290 nsec - iteration 2
+    Start thread T2 - date: 2 sec: 53221 nsec - iteration 1
+    T2 processing...
+    Finish thread T1
+    Write in index 3, 99 
+    Write in index 3, 99 
+    Finish thread T3
+    Finish thread T4
+    Finish thread T2
+    Start thread T1 - date: 3 sec: 47227 nsec - iteration 3
+    Finish thread T1
+    Write in index 4, 99 
+    Write in index 4, 99 
+    Start thread T1 - date: 4 sec: 43516 nsec - iteration 4
+    Start thread T2 - date: 4 sec: 44549 nsec - iteration 2
+    T2 processing...
+    Finish thread T1
+    Write in index 5, 99 
+    Write in index 5, 99 
+    Finish thread T2
+    Start thread T1 - date: 5 sec: 30967 nsec - iteration 5
+    Finish thread T1
+    Write in index 6, 99 
+    Write in index 6, 99 
+    Start thread T1 - date: 6 sec: 35585 nsec - iteration 6
+    Start thread T2 - date: 6 sec: 35507 nsec - iteration 3
+    T2 processing...
+    Finish thread T1
+    Write in index 7, 99 
+    Write in index 7, 99 
+    Receive inputs: number of discarded messages is 1
+    Receive inputs: first: 2, last: 7
+    T3, received data: 99
+    Receive inputs: number of discarded messages is 1
+    Receive inputs: first: 2, last: 7
+    T4 processing...
+    Finish thread T2
+    Start thread T1 - date: 7 sec: 40395 nsec - iteration 7
+    Finish thread T1
+    Write in index 8, 99 
+    Write in index 8, 99 
+    Start thread T1 - date: 8 sec: 40517 nsec - iteration 8
+    Start thread T2 - date: 8 sec: 144510 nsec - iteration 4
+    T2 processing...
+    Finish thread T1
+    Write in index 9, 99 
+    Write in index 9, 99 
+    Finish thread T3
+    Finish thread T4
+    Finish thread T2
+    Start thread T1 - date: 9 sec: 27123 nsec - iteration 9
+    Finish thread T1
+    Write in index 10, 99 
+    Write in index 10, 99 
+    Start thread T2 - date: 10 sec: 37288 nsec - iteration 5
+    T2 processing...
+    Start thread T1 - date: 10 sec: 37372 nsec - iteration 10
+    Finish thread T1
+    Write in index 11, 99 
+    Write in index 11, 99 
+    Finish thread T2
+    Start thread T1 - date: 11 sec: 34162 nsec - iteration 11
+    Finish thread T1
+    Write in index 12, 99 
+    Write in index 12, 99 
+    Start thread T2 - date: 12 sec: 36665 nsec - iteration 6
+    T2 processing...
+    Start thread T1 - date: 12 sec: 36738 nsec - iteration 12
+    Finish thread T1
+    Write in index 13, 99 
+    Write in index 13, 99 
+    ```
+
+2.  In a 1-to-N topology, the sender should perform one logical broadcast, but the current runtime executes multiple `SendOutput_runtime` calls sequentially. If preemption happens after sending to one destination (for example T3) but before another (for example T4), different receivers may cause different data versions in the same logical cycle. 
+
+3.  `simulate_exec_time(2000000000)` is commented as 200 ms, while it is actually 2000 ms. Also, the busy-wait implementation of `simulate_exec_time` consumes CPU continuously and can distort observed scheduling behavior, making the runtime less representative of real task execution.

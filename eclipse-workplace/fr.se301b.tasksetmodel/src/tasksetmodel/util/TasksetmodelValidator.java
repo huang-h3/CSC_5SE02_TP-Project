@@ -287,47 +287,58 @@ public class TasksetmodelValidator extends EObjectValidator {
 	    }
 	    return true;
 	}
-	/**
-	 * Validates the ValidQueueSize constraint of '<em>Connection</em>'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated NOT
-	 */
-	public boolean validateConnection_ValidQueueSize(Connection connection, DiagnosticChain diagnostics, Map<Object, Object> context) {
-	    if (connection.getSourcePort() != null && connection.getDstPort() != null) {
-	        
-	        // Find the corresponding Task with eContainer()
-	        Task srcTask = (Task) connection.getSourcePort().eContainer();
-	        Task dstTask = (Task) connection.getDstPort().eContainer();
-	        
-	        if (srcTask != null && dstTask != null) {
-	            int srcPeriod = srcTask.getPeriod();
-	            int dstPeriod = dstTask.getPeriod();
+    public boolean validateConnection_ValidQueueSize(Connection connection, DiagnosticChain diagnostics, Map<Object, Object> context) {
+        if (connection == null || connection.getSourcePort() == null || connection.getDstPort() == null) {
+            return true;
+        }
 
-	            int maxQueueLen = connection.getMaxQueueLen();
-	            
-	            if (srcPeriod > 0) {
-	                // dst.period/src.period
-	                int requiredLen = (int) Math.ceil((double) dstPeriod / srcPeriod);
+        if (!(connection.getSourcePort().eContainer() instanceof Task) ||
+            !(connection.getDstPort().eContainer() instanceof Task)) {
+            return true;
+        }
 
-	                if (maxQueueLen < requiredLen) {
-	                    if (diagnostics != null) {
-	                        diagnostics.add(new BasicDiagnostic(
-	                            Diagnostic.ERROR, DIAGNOSTIC_SOURCE, 0,
-	                            "Connection error: 'maxQueueLen' (" + maxQueueLen + ") is too small. " +
-	                            "Task '" + srcTask.getName() + "' (period:" + srcPeriod + ") produces data faster than " +
-	                            "Task '" + dstTask.getName() + "' (period:" + dstPeriod + ") can consume. " +
-	                            "Minimum required queue length is " + requiredLen + ".",
-	                            new Object[] { connection }
-	                        ));
-	                    }
-	                    return false;
-	                }
-	            }
-	        }
-	    }
-	    return true;
-	}
+        Task srcTask = (Task) connection.getSourcePort().eContainer();
+        Task dstTask = (Task) connection.getDstPort().eContainer();
+
+        int srcPeriod = srcTask.getPeriod();
+        int dstPeriod = dstTask.getPeriod();
+        int queueSize = connection.getMaxQueueLen();
+
+        if (srcPeriod <= 0 || dstPeriod <= 0) {
+            if (diagnostics != null) {
+                diagnostics.add(new BasicDiagnostic(
+                    Diagnostic.ERROR, DIAGNOSTIC_SOURCE, 0,
+                    "Connection '" + connection.getName() + "': periods must be > 0 " +
+                    "(src=" + srcPeriod + ", dst=" + dstPeriod + ").",
+                    new Object[] { connection }
+                ));
+            }
+            return false;
+        }
+
+        // Number of messages that can arrive during one destination activation interval
+        int requiredMsgs = (int) Math.ceil((double) dstPeriod / (double) srcPeriod);
+
+        // Runtime ring-buffer keeps one slot empty to distinguish full from empty:
+        // usable capacity = queue_size - 1
+        int requiredQueueSize = requiredMsgs + 1;
+
+        if (queueSize < requiredQueueSize) {
+            if (diagnostics != null) {
+                diagnostics.add(new BasicDiagnostic(
+                    Diagnostic.ERROR, DIAGNOSTIC_SOURCE, 0,
+                    "Connection '" + connection.getName() + "': maxQueueLen (" + queueSize + ") is too small. " +
+                    "For src period " + srcPeriod + " ms and dst period " + dstPeriod + " ms, " +
+                    "minimum queue_size is " + requiredQueueSize +
+                    " (stores " + requiredMsgs + " messages because one slot is reserved by runtime ring buffer).",
+                    new Object[] { connection }
+                ));
+            }
+            return false;
+        }
+
+        return true;
+    }
 
 	/**
 	 * <!-- begin-user-doc -->
